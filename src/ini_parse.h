@@ -107,7 +107,7 @@ char *mekb_trim_whitespace(char *line, char term) {
 	// trim leading whitespace
 	while (isspace(*line) && end > line) ++line;
 
-	if (line == end) return NULL; // empty line
+	if (line == end && isspace(*line)) return NULL; // empty line
 
 	// null terminate
 	end[1] = '\0';
