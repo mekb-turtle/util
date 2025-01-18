@@ -9,6 +9,7 @@ project(
 # define test files, these get compiled separately
 tests = [
     {'files': files('test' / 'ini_parse.c')},
+    {'files': files('test' / 'recurse.c')},
 ]
 
 # define project metadata
