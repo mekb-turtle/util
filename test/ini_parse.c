@@ -60,47 +60,23 @@ up\n";
 	} else
 		r = 0;
 
-#define OUT_SIZE (1024)
-	char *out = malloc(OUT_SIZE); // should be enough for this test
-	if (out == NULL) {
-		mekb_free_ini(list, alloc.free);
-		eprintf("malloc\n");
-		return 1;
+	char *out = NULL;
+
+	r = mekb_ini_serialize(list, &out, alloc);
+	if (r < 0) {
+		eprintf("Error serializing ini\n");
+		return r;
 	}
 
-	out[0] = '\0';
+	size_t out_len = strlen(out);
+	if (out_len != (size_t) r) {
+		ASSERT(out_len, r, FMT_HEX, r = 1);
+		eprintf("Output length mismatch\n");
+		r = 1;
+	} else
+		r = 0;
 
-	// append to out string
-#define catprintf(...)                                            \
-	{                                                             \
-		size_t len = strlen(out);                                 \
-		int r = snprintf(out + len, OUT_SIZE - len, __VA_ARGS__); \
-		if (r < 0 || r >= OUT_SIZE - (int) len) {                 \
-			mekb_free_ini(list, alloc.free);                      \
-			free(out);                                            \
-			eprintf("snprintf error\n");                          \
-			return 1;                                             \
-		}                                                         \
-	}
-
-	for (struct mekb_ini_list *l = list; l; l = l->next) {
-		if (l->header) {
-			catprintf("[%s]\n", l->header);
-		}
-		for (struct mekb_keyval_list *keyval = l->entries; keyval; keyval = keyval->next) {
-			char *key = keyval->key;
-			char *val = keyval->value;
-			if (val) {
-				catprintf("%s=%s\n", key, val);
-			} else {
-				catprintf("%s\n", key);
-			}
-		}
-	}
-
-	mekb_free_ini(list, alloc.free);
-
-	for (size_t i = 0; i < strlen(out); ++i) {
+	for (size_t i = 0; i < out_len; ++i) {
 		if (i > strlen(expected)) {
 			eprintf("Output too long\n");
 			r = 1;
@@ -109,9 +85,10 @@ up\n";
 		ASSERT(out[i], expected[i], FMT_HEX, r = 1);
 	}
 
-	printf("Output:\n%s\n", out);
+	printf("Output:\n%s", out);
 
 	free(out);
+	mekb_free_ini(list, alloc.free);
 
 	return r;
 }

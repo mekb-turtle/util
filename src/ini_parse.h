@@ -31,13 +31,13 @@ typedef int (*mekb_read_byte)(void *data);
 // EOF, '\n', '\r', or '\0' denote end of line
 int mekb_read_line(mekb_read_byte read_byte, void *data, char **out, int *eol, struct mekb_alloc alloc);
 
-// returns line with leading and trailing whitespace removed
+// returns line with leading and trailing whitespace removed, NULL if line is empty
+// uses isspace to determine whitespace
 // output string is null terminated
 // input string is modified in place, and is terminated by the first instance of term or a null byte
-// returns NULL if line is empty
 char *mekb_trim_whitespace(char *line, char term);
 
-// parses ini file, returns number of sections parsed, or a negative value on error
+// returns number of sections parsed, or a negative value on error
 // read_byte must return EOF or a negative value eventually, otherwise risk infinite loop
 // free with mekb_free_ini
 int mekb_ini_parse(mekb_read_byte read_byte, void *data, struct mekb_ini_list **out, struct mekb_alloc alloc);
@@ -47,6 +47,11 @@ void mekb_free_ini_entry(struct mekb_ini_list *list, void (*free)(void *));
 
 // frees the entire ini list
 void mekb_free_ini(struct mekb_ini_list *list, void (*free)(void *));
+
+// serialize ini list into a string
+// returns length of string written to *out, or a negative value on error
+// returns 0 and *out is NULL if list is empty
+int mekb_ini_serialize(struct mekb_ini_list *in, char **out, struct mekb_alloc alloc);
 
 #endif
 #ifdef MEKB_INI_PARSE_IMPL
@@ -202,6 +207,8 @@ int mekb_ini_parse(mekb_read_byte read_byte, void *data, struct mekb_ini_list **
 		}
 		if (!key) key = "";
 
+		// duplicate key and value to avoid dangling pointers
+
 		char *key_ = strdup(key);
 		if (key_ == NULL) goto cleanup;
 
@@ -268,6 +275,61 @@ void mekb_free_ini(struct mekb_ini_list *list, void (*free)(void *)) {
 		mekb_free_ini_entry(list, free);
 		list = next;
 	}
+}
+
+int mekb_ini_serialize(struct mekb_ini_list *in, char **out, struct mekb_alloc alloc) {
+	// calculate size of output
+	size_t out_size = 0;
+	for (struct mekb_ini_list *list = in; list; list = list->next) {
+		if (list->header) {
+			out_size += strlen(list->header) + 3; // [header]\n
+		}
+		for (struct mekb_keyval_list *keyval = list->entries; keyval; keyval = keyval->next) {
+			out_size += strlen(keyval->key); // key
+			if (keyval->value) {
+				out_size += strlen(keyval->value) + 1; // =value
+			}
+			++out_size; // \n
+		}
+	}
+	if (out_size == 0) {
+		*out = NULL;
+		return 0;
+	}
+
+	++out_size; // null terminator
+
+	// allocate output
+	char *out_ = alloc.malloc(out_size);
+	if (out_ == NULL) return -1;
+
+	// write to output
+	size_t i = 0;
+#define MEKB_PRINT(...)                                          \
+	{                                                            \
+		int ret = snprintf(out_ + i, out_size - i, __VA_ARGS__); \
+		if (ret < 0 || (size_t) ret >= out_size - i) goto fail;  \
+		i += ret;                                                \
+	}
+	for (struct mekb_ini_list *list = in; list; list = list->next) {
+		if (list->header) {
+			MEKB_PRINT("[%s]\n", list->header);
+		}
+		for (struct mekb_keyval_list *keyval = list->entries; keyval; keyval = keyval->next) {
+			MEKB_PRINT("%s", keyval->key);
+			if (keyval->value) {
+				MEKB_PRINT("=%s", keyval->value);
+			}
+			MEKB_PRINT("\n");
+		}
+	}
+#undef MEKB_PRINT
+	*out = out_;
+	if (out_size > INT_MAX) return INT_MAX;
+	return out_size - 1;
+fail:
+	alloc.free(out_);
+	return -1;
 }
 #endif
 #endif
