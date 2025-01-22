@@ -51,7 +51,7 @@ never=gonna\n\
 give=you\n\
 up\n";
 
-	struct mekb_alloc alloc = {.malloc = malloc, .realloc = realloc, .free = free};
+	struct mekb_alloc alloc = MEKB_ALLOC(malloc, realloc, free);
 	struct mekb_ini_list *list = NULL;
 	r = mekb_ini_parse((mekb_read_byte) read_byte, (void *) &data_, &list, alloc);
 	if (r < 0) {

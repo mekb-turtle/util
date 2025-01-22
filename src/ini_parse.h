@@ -2,6 +2,8 @@
 #define MEKB_INI_PARSE_ONCE
 #include <stddef.h>
 
+#include "util.h" // depends on util.h
+
 struct mekb_keyval_list {
 	// value can be NULL if no '=' is present
 	char *key, *value;
@@ -14,16 +16,6 @@ struct mekb_ini_list {
 	struct mekb_keyval_list *entries;
 	struct mekb_ini_list *next; // next section
 };
-
-// structure to store memory allocation functions
-struct mekb_alloc {
-	void *(*malloc)(size_t);
-	void *(*realloc)(void *, size_t);
-	void (*free)(void *);
-};
-
-// should return a byte value, EOF on end of file, or a negative value on error
-typedef int (*mekb_read_byte)(void *data);
 
 // returns length of line, or a negative value on error
 // *out is null terminated

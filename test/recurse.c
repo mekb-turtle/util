@@ -25,5 +25,5 @@ bool print_dir(const char *path, struct stat st, int depth, int ddepth, void *da
 }
 
 int main() {
-	mekb_recurse(".", print_dir, NULL, malloc, free);
+	mekb_recurse(".", print_dir, NULL, MEKB_ALLOC(malloc, realloc, free));
 }

@@ -10,6 +10,7 @@ project(
 tests = [
     {'files': files('test' / 'ini_parse.c')},
     {'files': files('test' / 'recurse.c')},
+    {'files': files('test' / 'utf8.c')},
 ]
 
 # define project metadata
